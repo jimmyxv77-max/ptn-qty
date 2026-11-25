@@ -3,12 +3,12 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(
-    page_title="Roll Radius & Max Coated Pieces Calculator",
+    page_title="Roll Thickness & Max Coated Pieces Calculator",
     page_icon=None,
     layout="centered",
 )
 
-# Fixed max roll radius R (mm) by plant & polarity (excluding core; aligned with Plant 3 / Plant 4 presets)
+# Fixed max net single-side roll thickness R (mm) by plant & polarity (excluding core D)
 DEFAULT_MAX_RADIUS_MM = {
     "Plant 3": {
         "Cathode": 172.0,
@@ -23,32 +23,32 @@ DEFAULT_MAX_RADIUS_MM = {
 I18N = {
     "en": {
         "lang_label": "Language / 语言",
-        "title": "Roll Radius & Max Coated Pieces Calculator",
-        "caption": "Excludes core diameter; uses annular formula L_max = (π·D·R + π·R²) / U with fixed plant/polarity max radius R",
+        "title": "Net Roll Thickness & Max Coated Pieces Calculator",
+        "caption": "R = net single-side roll thickness (excluding core); L_max = (π·D·R + π·R²) / U",
         "sb_header": "Fixed Parameters",
-        "reel_d": "Reel / Core Diameter D (mm)",
-        "reel_d_help": "Corresponds to Excel column C reel diameter (default 95 mm)",
+        "reel_d": "Core Diameter D (mm)",
+        "reel_d_help": "Reel / core diameter D (default 95 mm)",
         "pi_mode": "Pi (π) Value",
         "pi_exact": "Exact math.pi (3.14159...)",
         "pi_314": "Excel fixed 3.14",
-        "allow_custom_r": "Allow temporary override of fixed max radius R",
-        "preset_tbl": "**Preset Fixed Max Roll Radius R (mm)**",
+        "allow_custom_r": "Allow temporary override of fixed max net roll thickness R",
+        "preset_tbl": "**Preset Max Net Single-Side Roll Thickness R (mm)**",
         "col_plant": "Plant",
         "col_pol": "Polarity",
-        "col_r": "Max Radius R (mm)",
+        "col_r": "Max Net Thickness R (mm)",
         "plant_lbl": "Select Plant",
         "pol_lbl": "Select Polarity",
         "pol_opts": ["Cathode", "Anode"],
-        "custom_r_lbl": "Max Roll Radius R (mm)",
+        "custom_r_lbl": "Max Net Single-Side Roll Thickness R (mm)",
         "fixed_r_info": (
-            "Fixed max roll radius R: **{r:.1f} mm** ({plant} · {pol}) | "
+            "Fixed max net single-side thickness R: **{r:.1f} mm** ({plant} · {pol}) | "
             "Core diameter D: **{d:.1f} mm** (Total OD: {od:.1f} mm)"
         ),
         "input_sec": "Process Inputs",
         "thick_lbl": "Calendered Thickness U (μm)",
-        "thick_help": "Corresponds to Excel column G thickness (μm)",
+        "thick_help": "Calendered electrode thickness U (μm)",
         "piece_len_lbl": "Single Coated Piece Length (m)",
-        "piece_len_help": "Corresponds to Excel column I length (m)",
+        "piece_len_help": "Length of one coated piece (m)",
         "ref_qty_lbl": "Reference / Planned Piece Qty (optional check)",
         "result_sec": "Calculation Results",
         "m_len": "Max Roll Length L_max (m)",
@@ -68,32 +68,32 @@ I18N = {
     },
     "zh": {
         "lang_label": "Language / 语言",
-        "title": "卷径与涂布极片最大片数计算器",
-        "caption": "不计卷芯直径，按圆环公式 L_max = (π·D·R + π·R²) / U 与厂区/极性固定卷半径上限计算最大片数",
+        "title": "净卷厚与涂布极片最大片数计算器",
+        "caption": "R 为单边净卷厚（不含卷芯直径 D）；按 L_max = (π·D·R + π·R²) / U 计算最大卷长与涂布片数",
         "sb_header": "固定参数设置",
         "reel_d": "卷芯直径 D (mm)",
-        "reel_d_help": "对应 Excel 中 C 列卷芯直径（默认 95 mm）",
+        "reel_d_help": "卷芯直径 D（默认 95 mm）",
         "pi_mode": "圆周率 π 取值",
         "pi_exact": "精确圆周率 math.pi (3.14159...)",
         "pi_314": "Excel 固定值 (3.14)",
-        "allow_custom_r": "允许临时微调固定最大卷半径 R",
-        "preset_tbl": "**内置固定最大卷半径 R (mm)**",
+        "allow_custom_r": "允许临时微调固定最大单边净卷厚 R",
+        "preset_tbl": "**内置固定最大单边净卷厚 R (mm)**",
         "col_plant": "厂区",
         "col_pol": "极性",
-        "col_r": "最大卷半径 R (mm)",
+        "col_r": "最大净卷厚 R (mm)",
         "plant_lbl": "选择厂区",
         "pol_lbl": "选择极性",
         "pol_opts": ["正极", "负极"],
-        "custom_r_lbl": "极限最大卷半径 R (mm)",
+        "custom_r_lbl": "极限最大单边净卷厚 R (mm)",
         "fixed_r_info": (
-            "当前固定极限最大卷半径 R：**{r:.1f} mm**（{plant} · {pol}）｜"
+            "当前固定极限最大单边净卷厚 R：**{r:.1f} mm**（{plant} · {pol}）｜"
             "卷芯直径 D：**{d:.1f} mm**（总外径 {od:.1f} mm）"
         ),
         "input_sec": "输入工艺参数",
         "thick_lbl": "辊压厚度 U (μm)",
-        "thick_help": "对应 Excel 中 G 列厚度 (μm)",
+        "thick_help": "辊压后极片厚度 U（μm）",
         "piece_len_lbl": "涂布单片极片长度 (m)",
-        "piece_len_help": "对应 Excel 中 I 列单片长度 (m)",
+        "piece_len_help": "单张/单片涂布极片长度（m）",
         "ref_qty_lbl": "参考/计划片数（可选，用于对比是否超限）",
         "result_sec": "计算结果",
         "m_len": "卷最大长度 L_max (m)",
@@ -230,7 +230,7 @@ ref_piece_qty = st.number_input(
     step=10,
 )
 
-# Core calculation: L_max = (pi * D * R + pi * R^2) / U (R in mm, D in mm, U in um -> L_max in m)
+# L_max = (pi * D * R + pi * R^2) / U (R in mm, D in mm, U in um -> L_max in m)
 max_roll_length_m = (pi_val * reel_diameter_mm * max_radius_mm + pi_val * (max_radius_mm ** 2)) / calender_thickness_um
 exact_piece_float = max_roll_length_m / coated_piece_length_m
 max_piece_count = int(math.floor(exact_piece_float))
