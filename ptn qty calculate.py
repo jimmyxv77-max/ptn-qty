@@ -8,40 +8,40 @@ st.set_page_config(
     layout="centered",
 )
 
-# Fixed max net single-side roll thickness R (mm) by plant & polarity (excluding core D)
-DEFAULT_MAX_RADIUS_MM = {
+# Default recommended max net single-side roll thickness R (mm) by plant & polarity
+INITIAL_REC_RADIUS_MM = {
     "Plant 3": {
         "Cathode": 172.0,
         "Anode": 175.0,
     },
     "Plant 4": {
         "Cathode": 160.0,
-        "Anode": 191.0,
+        "Anode": 180.0,
     },
 }
 
 I18N = {
     "en": {
         "lang_label": "Language / 语言",
-        "title": "Net Roll Thickness & Max Coated Pieces Calculator",
-        "caption": "R = net single-side roll thickness (excluding core); L_max = (π·D·R + π·R²) / U",
-        "sb_header": "Fixed Parameters",
+        "title": "Recommended Roll Thickness & Max Coated Pieces Calculator",
+        "caption": "R = net single-side roll thickness (excluding core); L_max = (π·D·R + π·R²) / U with adjustable recommended max R",
+        "sb_header": "Recommended & Fixed Parameters",
         "reel_d": "Core Diameter D (mm)",
         "reel_d_help": "Reel / core diameter D (default 95 mm)",
         "pi_mode": "Pi (π) Value",
         "pi_exact": "Exact math.pi (3.14159...)",
         "pi_314": "Excel fixed 3.14",
-        "allow_custom_r": "Allow temporary override of fixed max net roll thickness R",
-        "preset_tbl": "**Preset Max Net Single-Side Roll Thickness R (mm)**",
+        "rec_tbl": "**Recommended Max Net Roll Thickness R (mm, editable)**",
+        "reset_rec": "Reset Recommended Values to Default",
         "col_plant": "Plant",
         "col_pol": "Polarity",
-        "col_r": "Max Net Thickness R (mm)",
+        "col_r": "Rec. Max R (mm)",
         "plant_lbl": "Select Plant",
         "pol_lbl": "Select Polarity",
         "pol_opts": ["Cathode", "Anode"],
-        "custom_r_lbl": "Max Net Single-Side Roll Thickness R (mm)",
-        "fixed_r_info": (
-            "Fixed max net single-side thickness R: **{r:.1f} mm** ({plant} · {pol}) | "
+        "cur_r_lbl": "Recommended Max Net Single-Side Thickness R (mm)",
+        "rec_r_info": (
+            "Recommended max net single-side thickness R: **{r:.1f} mm** ({plant} · {pol}) | "
             "Core diameter D: **{d:.1f} mm** (Total OD: {od:.1f} mm)"
         ),
         "input_sec": "Process Inputs",
@@ -68,25 +68,25 @@ I18N = {
     },
     "zh": {
         "lang_label": "Language / 语言",
-        "title": "净卷厚与涂布极片最大片数计算器",
-        "caption": "R 为单边净卷厚（不含卷芯直径 D）；按 L_max = (π·D·R + π·R²) / U 计算最大卷长与涂布片数",
-        "sb_header": "固定参数设置",
+        "title": "推荐净卷厚与涂布极片最大片数计算器",
+        "caption": "R 为单边净卷厚（不含卷芯直径 D）；按 L_max = (π·D·R + π·R²) / U 与可调推荐最大卷厚计算最大片数",
+        "sb_header": "推荐与固定参数设置",
         "reel_d": "卷芯直径 D (mm)",
         "reel_d_help": "卷芯直径 D（默认 95 mm）",
         "pi_mode": "圆周率 π 取值",
         "pi_exact": "精确圆周率 math.pi (3.14159...)",
         "pi_314": "Excel 固定值 (3.14)",
-        "allow_custom_r": "允许临时微调固定最大单边净卷厚 R",
-        "preset_tbl": "**内置固定最大单边净卷厚 R (mm)**",
+        "rec_tbl": "**各厂区/极性默认推荐最大净卷厚 R (mm，支持直接修改)**",
+        "reset_rec": "恢复默认推荐值",
         "col_plant": "厂区",
         "col_pol": "极性",
-        "col_r": "最大净卷厚 R (mm)",
+        "col_r": "推荐最大 R (mm)",
         "plant_lbl": "选择厂区",
         "pol_lbl": "选择极性",
         "pol_opts": ["正极", "负极"],
-        "custom_r_lbl": "极限最大单边净卷厚 R (mm)",
-        "fixed_r_info": (
-            "当前固定极限最大单边净卷厚 R：**{r:.1f} mm**（{plant} · {pol}）｜"
+        "cur_r_lbl": "推荐最大单边净卷厚 R (mm)",
+        "rec_r_info": (
+            "当前推荐最大单边净卷厚 R：**{r:.1f} mm**（{plant} · {pol}）｜"
             "卷芯直径 D：**{d:.1f} mm**（总外径 {od:.1f} mm）"
         ),
         "input_sec": "输入工艺参数",
@@ -112,6 +112,11 @@ I18N = {
         ),
     },
 }
+
+if "rec_radius_map" not in st.session_state:
+    st.session_state.rec_radius_map = {
+        p: dict(pol_d) for p, pol_d in INITIAL_REC_RADIUS_MM.items()
+    }
 
 with st.sidebar:
     lang = st.radio(
@@ -140,25 +145,35 @@ with st.sidebar:
     )
     pi_val = math.pi if pi_mode == t["pi_exact"] else 3.14
 
-    allow_custom_r = st.checkbox(t["allow_custom_r"], value=False)
-    st.markdown(t["preset_tbl"])
-    preset_df = pd.DataFrame(
-        [
-            {
-                t["col_plant"]: plant,
-                t["col_pol"]: pol,
-                t["col_r"]: r_val,
-            }
-            for plant, pol_map in DEFAULT_MAX_RADIUS_MM.items()
-            for pol, r_val in pol_map.items()
-        ]
-    )
-    st.dataframe(preset_df, use_container_width=True, hide_index=True)
+    st.markdown(t["rec_tbl"])
+    for p_name in ["Plant 3", "Plant 4"]:
+        for pol_name in ["Cathode", "Anode"]:
+            w_key = f"sb_rec_{p_name}_{pol_name}"
+            if w_key not in st.session_state:
+                st.session_state[w_key] = float(st.session_state.rec_radius_map[p_name][pol_name])
+            st.session_state.rec_radius_map[p_name][pol_name] = float(
+                st.number_input(
+                    f"{p_name} · {pol_name}",
+                    min_value=1.0,
+                    max_value=2000.0,
+                    step=0.5,
+                    key=w_key,
+                )
+            )
+
+    if st.button(t["reset_rec"], use_container_width=True):
+        st.session_state.rec_radius_map = {
+            p: dict(pol_d) for p, pol_d in INITIAL_REC_RADIUS_MM.items()
+        }
+        for p_name in ["Plant 3", "Plant 4"]:
+            for pol_name in ["Cathode", "Anode"]:
+                st.session_state[f"sb_rec_{p_name}_{pol_name}"] = float(INITIAL_REC_RADIUS_MM[p_name][pol_name])
+        st.rerun()
 
 st.title(t["title"])
 st.caption(t["caption"])
 
-plant_keys = list(DEFAULT_MAX_RADIUS_MM.keys())
+plant_keys = list(st.session_state.rec_radius_map.keys())
 default_plant_idx = plant_keys.index("Plant 4") if "Plant 4" in plant_keys else 0
 
 col_a, col_b = st.columns(2)
@@ -173,27 +188,30 @@ with col_b:
     )
 
 pol_key = "Cathode" if pol_idx == 0 else "Anode"
-fixed_max_r = float(DEFAULT_MAX_RADIUS_MM[plant_choice][pol_key])
+rec_r_val = float(st.session_state.rec_radius_map[plant_choice][pol_key])
 
-if allow_custom_r:
-    max_radius_mm = st.number_input(
-        t["custom_r_lbl"],
+max_radius_mm = float(
+    st.number_input(
+        t["cur_r_lbl"],
         min_value=1.0,
         max_value=2000.0,
-        value=fixed_max_r,
+        value=rec_r_val,
         step=0.5,
+        key=f"main_rec_r_{plant_choice}_{pol_key}_{rec_r_val}",
     )
-else:
-    max_radius_mm = fixed_max_r
-    st.info(
-        t["fixed_r_info"].format(
-            r=max_radius_mm,
-            plant=plant_choice,
-            pol=t["pol_opts"][pol_idx],
-            d=reel_diameter_mm,
-            od=reel_diameter_mm + 2 * max_radius_mm,
-        )
+)
+st.session_state.rec_radius_map[plant_choice][pol_key] = max_radius_mm
+st.session_state[f"sb_rec_{plant_choice}_{pol_key}"] = max_radius_mm
+
+st.info(
+    t["rec_r_info"].format(
+        r=max_radius_mm,
+        plant=plant_choice,
+        pol=t["pol_opts"][pol_idx],
+        d=reel_diameter_mm,
+        od=reel_diameter_mm + 2 * max_radius_mm,
     )
+)
 
 st.divider()
 st.subheader(t["input_sec"])
