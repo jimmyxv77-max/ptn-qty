@@ -33,9 +33,6 @@ I18N = {
         "pi_314": "Excel fixed 3.14",
         "rec_tbl": "**Recommended Max Net Roll Thickness R (mm, editable)**",
         "reset_rec": "Reset Recommended Values to Default",
-        "col_plant": "Plant",
-        "col_pol": "Polarity",
-        "col_r": "Rec. Max R (mm)",
         "plant_lbl": "Select Plant",
         "pol_lbl": "Select Polarity",
         "pol_opts": ["Cathode", "Anode"],
@@ -78,9 +75,6 @@ I18N = {
         "pi_314": "Excel 固定值 (3.14)",
         "rec_tbl": "**各厂区/极性默认推荐最大净卷厚 R (mm，支持直接修改)**",
         "reset_rec": "恢复默认推荐值",
-        "col_plant": "厂区",
-        "col_pol": "极性",
-        "col_r": "推荐最大 R (mm)",
         "plant_lbl": "选择厂区",
         "pol_lbl": "选择极性",
         "pol_opts": ["正极", "负极"],
@@ -118,6 +112,15 @@ if "rec_radius_map" not in st.session_state:
         p: dict(pol_d) for p, pol_d in INITIAL_REC_RADIUS_MM.items()
     }
 
+
+def _on_sb_change(p_name: str, pol_name: str, w_key: str):
+    st.session_state.rec_radius_map[p_name][pol_name] = float(st.session_state[w_key])
+
+
+def _on_main_change(p_name: str, pol_name: str, w_key: str):
+    st.session_state.rec_radius_map[p_name][pol_name] = float(st.session_state[w_key])
+
+
 with st.sidebar:
     lang = st.radio(
         "Language / 语言",
@@ -149,16 +152,15 @@ with st.sidebar:
     for p_name in ["Plant 3", "Plant 4"]:
         for pol_name in ["Cathode", "Anode"]:
             w_key = f"sb_rec_{p_name}_{pol_name}"
-            if w_key not in st.session_state:
-                st.session_state[w_key] = float(st.session_state.rec_radius_map[p_name][pol_name])
-            st.session_state.rec_radius_map[p_name][pol_name] = float(
-                st.number_input(
-                    f"{p_name} · {pol_name}",
-                    min_value=1.0,
-                    max_value=2000.0,
-                    step=0.5,
-                    key=w_key,
-                )
+            st.number_input(
+                f"{p_name} · {pol_name}",
+                min_value=1.0,
+                max_value=2000.0,
+                value=float(st.session_state.rec_radius_map[p_name][pol_name]),
+                step=0.5,
+                key=w_key,
+                on_change=_on_sb_change,
+                args=(p_name, pol_name, w_key),
             )
 
     if st.button(t["reset_rec"], use_container_width=True):
@@ -167,7 +169,12 @@ with st.sidebar:
         }
         for p_name in ["Plant 3", "Plant 4"]:
             for pol_name in ["Cathode", "Anode"]:
-                st.session_state[f"sb_rec_{p_name}_{pol_name}"] = float(INITIAL_REC_RADIUS_MM[p_name][pol_name])
+                k_sb = f"sb_rec_{p_name}_{pol_name}"
+                k_mn = f"main_rec_{p_name}_{pol_name}"
+                if k_sb in st.session_state:
+                    del st.session_state[k_sb]
+                if k_mn in st.session_state:
+                    del st.session_state[k_mn]
         st.rerun()
 
 st.title(t["title"])
@@ -188,20 +195,21 @@ with col_b:
     )
 
 pol_key = "Cathode" if pol_idx == 0 else "Anode"
-rec_r_val = float(st.session_state.rec_radius_map[plant_choice][pol_key])
+main_key = f"main_rec_{plant_choice}_{pol_key}"
+current_rec_val = float(st.session_state.rec_radius_map[plant_choice][pol_key])
 
 max_radius_mm = float(
     st.number_input(
         t["cur_r_lbl"],
         min_value=1.0,
         max_value=2000.0,
-        value=rec_r_val,
+        value=current_rec_val,
         step=0.5,
-        key=f"main_rec_r_{plant_choice}_{pol_key}_{rec_r_val}",
+        key=main_key,
+        on_change=_on_main_change,
+        args=(plant_choice, pol_key, main_key),
     )
 )
-st.session_state.rec_radius_map[plant_choice][pol_key] = max_radius_mm
-st.session_state[f"sb_rec_{plant_choice}_{pol_key}"] = max_radius_mm
 
 st.info(
     t["rec_r_info"].format(
